@@ -1,10 +1,7 @@
-# bhm-at-scale
+# Bayesian Hierarchical Models at Scale
 
-Add a short description here!
+Accompanying source code to the blog post ...
 
-## Description
-
-A longer description of your project goes here...
 
 ## Installation
 
@@ -23,24 +20,7 @@ In order to set up the necessary environment:
    python setup.py install # or `develop`
    ```
 
-Optional and needed only once after `git clone`:
-
-4. install several [pre-commit] git hooks with:
-   ```
-   pre-commit install
-   ```
-   and checkout the configuration under `.pre-commit-config.yaml`.
-   The `-n, --no-verify` flag of `git commit` can be used to deactivate pre-commit hooks temporarily.
-
-5. install [nbstripout] git hooks to remove the output cells of committed notebooks with:
-   ```
-   nbstripout --install --attributes notebooks/.gitattributes
-   ```
-   This is useful to avoid large diffs due to plots in your notebooks.
-   A simple `nbstripout --uninstall` will revert these changes.
-
-
-Then take a look into the `scripts` and `notebooks` folders.
+Then take a look into the `notebooks` folders.
 
 ## Dependency Management & Reproducibility
 
@@ -63,7 +43,6 @@ Then take a look into the `scripts` and `notebooks` folders.
 ├── CHANGELOG.rst           <- Changelog to keep track of new features and fixes.
 ├── LICENSE.txt             <- License as chosen on the command-line.
 ├── README.md               <- The top-level README for developers.
-├── configs                 <- Directory for configurations of model & application.
 ├── data
 │   ├── external            <- Data from third party sources.
 │   ├── interim             <- Intermediate data that has been transformed.
@@ -71,16 +50,9 @@ Then take a look into the `scripts` and `notebooks` folders.
 │   └── raw                 <- The original, immutable data dump.
 ├── docs                    <- Directory for Sphinx documentation in rst or md.
 ├── environment.yaml        <- The conda environment file for reproducibility.
-├── models                  <- Trained and serialized models, model predictions,
-│                              or model summaries.
 ├── notebooks               <- Jupyter notebooks. Naming convention is a number (for
 │                              ordering), the creator's initials and a description,
 │                              e.g. `1.0-fw-initial-data-exploration`.
-├── references              <- Data dictionaries, manuals, and all other materials.
-├── reports                 <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures             <- Generated plots and figures for reports.
-├── scripts                 <- Analysis and production scripts which import the
-│                              actual PYTHON_PKG, e.g. train_model.
 ├── setup.cfg               <- Declarative configuration of your project.
 ├── setup.py                <- Use `python setup.py develop` to install for development or
 |                              or create a distribution with `python setup.py bdist_wheel`.
@@ -94,7 +66,7 @@ Then take a look into the `scripts` and `notebooks` folders.
 
 ## Note
 
-This project has been set up using PyScaffold 3.2.3.post0.dev16+gcb5fddb.dirty and the [dsproject extension] 0.4.
+This project has been set up using PyScaffold 3.2.3 and the [dsproject extension] 0.4.
 For details and usage information on PyScaffold see https://pyscaffold.org/.
 
 [conda]: https://docs.conda.io/
