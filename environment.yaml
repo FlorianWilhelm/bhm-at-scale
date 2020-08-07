@@ -1,0 +1,22 @@
+name: bhm-at-scale
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python>=3.6
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - ipython
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - pip:
+     # add here only pip-packages that are not available in conda/conda-forge! E.g.:
+     - kaggle
+     - jax  # ==0.1.57  # needed by numpyro
+     - numpyro
+  # for development only (could also be kept in a separate environment file)
+  - jupyterlab
