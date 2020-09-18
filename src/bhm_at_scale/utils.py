@@ -94,7 +94,7 @@ def stats_to_df(stats: Dict[str, Dict[str, jnp.DeviceArray]], col_names: List[st
     return pd.concat(dfs)
 
 
-def preds_to_df(preds: Dict[str, Dict[str, jnp.DeviceArray]]) -> pd.DataFrame:
+def preds_to_df(preds: Dict[str, jnp.DeviceArray]) -> pd.DataFrame:
     """Transforms the predictions after a `summary` call above to a proper dataframe
 
     Args:
@@ -103,9 +103,8 @@ def preds_to_df(preds: Dict[str, Dict[str, jnp.DeviceArray]]) -> pd.DataFrame:
     Returns:
         nice dataframe
     """
-    obs = preds['obs']
     dfs = []
-    for stat_name, values in obs.items():
+    for stat_name, values in preds.items():
         dims = len(values.shape)
         values = jnp.atleast_2d(values)
         stat_df = pd.DataFrame(values, columns=[f"ts_{t}" for t in np.arange(values.shape[-1])])

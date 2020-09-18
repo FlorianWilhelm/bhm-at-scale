@@ -97,7 +97,7 @@ def plot_sales_preds(df,
     ax2.set_ylabel('Sales')
 
     ax1.legend(lines + lines2, labels + labels2, loc='upper left', bbox_to_anchor=(1.05, 1.0))
-    plt.margins(0.02)
+    plt.margins(0.0)
     for t in range(len(df) - 1):
         _add_axes_sep(ax1, t + 0.5)
 

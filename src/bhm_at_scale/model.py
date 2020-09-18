@@ -12,24 +12,24 @@ Guide = Callable[[DeviceArray], None]
 
 
 class Site:
-    factor_mu = "factor_mu"
-    factor_sigma = "factor_sigma"
-    factor_offsets = "factor_offsets"
-    factors = "factors"
+    disp_param_mu = "disp_param_mu"
+    disp_param_sigma = "disp_param_sigma"
+    disp_param_offsets = "disp_param_offsets"
+    disp_params = "disp_params"
     coef_mus = "coef_mus"
     coef_sigmas = "coef_sigmas"
     coef_offsets = "coef_offsets"
     coefs = "coefs"
-    obs = "obs"
+    days = "days"
 
 
 class Param:
-    loc_factor_mu = "loc_factor_mu"
-    scale_factor_mu = "scale_factor_mu"
-    loc_factor_logsigma = "loc_factor_logsigma"
-    scale_factor_logsigma = "scale_factor_logsigma"
-    loc_factor_offsets = "loc_factor_offsets"
-    scale_factor_offsets = "scale_factor_offsets"
+    loc_disp_param_mu = "loc_disp_param_mu"
+    scale_disp_param_mu = "scale_disp_param_mu"
+    loc_disp_param_logsigma = "loc_disp_param_logsigma"
+    scale_disp_param_logsigma = "scale_disp_param_logsigma"
+    loc_disp_param_offsets = "loc_disp_param_offsets"
+    scale_disp_param_offsets = "scale_disp_param_offsets"
     loc_coef_mus = "loc_coef_mus"
     scale_coef_mus = "scale_coef_mus"
     loc_coef_logsigmas = "loc_coef_logsigmas"
@@ -65,7 +65,7 @@ class Features:
 
 
 def model(X: DeviceArray) -> DeviceArray:
-    """Gamma-Poisson hierarchical model for sales forecasting
+    """Gamma-Poisson hierarchical model for daily sales forecasting
 
     Args:
         X: input data
@@ -73,35 +73,35 @@ def model(X: DeviceArray) -> DeviceArray:
     Returns:
         output data
     """
-    n_items, n_obs, n_features = X.shape
+    n_stores, n_days, n_features = X.shape
     n_features -= 1  # remove one dim for target
     eps = 1e-12  # epsilon
 
     plate_features = numpyro.plate('features', n_features, dim=-1)
-    plate_items = numpyro.plate('items', n_items, dim=-2)
-    plate_obs = numpyro.plate('timesteps', n_obs, dim=-1)
+    plate_stores = numpyro.plate('stores', n_stores, dim=-2)
+    plate_days = numpyro.plate('timesteps', n_days, dim=-1)
 
-    factor_mu = numpyro.sample(
-        Site.factor_mu,
+    disp_param_mu = numpyro.sample(
+        Site.disp_param_mu,
         dist.Normal(loc=4., scale=1.)
     )
-    factor_sigma = numpyro.sample(
-        Site.factor_sigma,
+    disp_param_sigma = numpyro.sample(
+        Site.disp_param_sigma,
         dist.HalfNormal(scale=1.)
     )
 
-    with plate_items:
-        factor_offsets = numpyro.sample(
-            Site.factor_offsets,
+    with plate_stores:
+        disp_param_offsets = numpyro.sample(
+            Site.disp_param_offsets,
             dist.Normal(
-                loc=jnp.zeros((n_items, 1)),
+                loc=jnp.zeros((n_stores, 1)),
                 scale=0.1)
         )
-        factors = factor_mu + factor_offsets*factor_sigma
-        factors = numpyro.sample(
-            Site.factors,
-            dist.Delta(factors),
-            obs=factors
+        disp_params = disp_param_mu + disp_param_offsets*disp_param_sigma
+        disp_params = numpyro.sample(
+            Site.disp_params,
+            dist.Delta(disp_params),
+            obs=disp_params
         )
 
     with plate_features:
@@ -115,11 +115,11 @@ def model(X: DeviceArray) -> DeviceArray:
             dist.HalfNormal(scale=2.*jnp.ones(n_features))
         )
 
-        with plate_items:
+        with plate_stores:
             coef_offsets = numpyro.sample(
                 Site.coef_offsets,
                 dist.Normal(
-                    loc=jnp.zeros((n_items, n_features)),
+                    loc=jnp.zeros((n_stores, n_features)),
                     scale=1.)
             )
             coefs = coef_mus + coef_offsets * coef_sigmas
@@ -129,7 +129,7 @@ def model(X: DeviceArray) -> DeviceArray:
                 obs=coefs
             )
 
-    with plate_obs, plate_items:
+    with plate_days, plate_stores:
         targets = X[..., -1]
         features = jnp.nan_to_num(X[..., :-1])  # padded features to 0
         is_observed = jnp.where(jnp.isnan(targets), jnp.zeros_like(targets), jnp.ones_like(targets))
@@ -137,9 +137,9 @@ def model(X: DeviceArray) -> DeviceArray:
         means = (is_observed * jnp.exp(jnp.sum(jnp.expand_dims(coefs, axis=1) * features, axis=2))
                  + not_observed*eps)
 
-        betas = is_observed*jnp.exp(-factors) + not_observed
+        betas = is_observed*jnp.exp(-disp_params) + not_observed
         alphas = means * betas
-        return numpyro.sample(Site.obs, dist.GammaPoisson(alphas, betas), obs=jnp.nan_to_num(targets))
+        return numpyro.sample(Site.days, dist.GammaPoisson(alphas, betas), obs=jnp.nan_to_num(targets))
 
 
 def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
@@ -154,37 +154,37 @@ def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
         actual guide function
     """
     def model(X: DeviceArray):
-        n_items, n_obs, n_features = X.shape
+        n_stores, n_days, n_features = X.shape
         n_features -= 1  # remove one dim for target
 
         plate_features = numpyro.plate('features', n_features, dim=-1)
-        plate_items = numpyro.plate('items', n_items, dim=-2)
-        plate_obs = numpyro.plate('timesteps', n_obs, dim=-1)
+        plate_stores = numpyro.plate('stores', n_stores, dim=-2)
+        plate_days = numpyro.plate('timesteps', n_days, dim=-1)
 
-        factor_mu = numpyro.sample(
-            Site.factor_mu,
-            dist.Normal(loc=model_params[Param.loc_factor_mu],
-                        scale=model_params[Param.scale_factor_mu])
+        disp_param_mu = numpyro.sample(
+            Site.disp_param_mu,
+            dist.Normal(loc=model_params[Param.loc_disp_param_mu],
+                        scale=model_params[Param.scale_disp_param_mu])
         )
-        factor_sigma = numpyro.sample(
-            Site.factor_sigma,
+        disp_param_sigma = numpyro.sample(
+            Site.disp_param_sigma,
             dist.TransformedDistribution(
-                dist.Normal(loc=model_params[Param.loc_factor_logsigma],
-                            scale=model_params[Param.scale_factor_logsigma]),
+                dist.Normal(loc=model_params[Param.loc_disp_param_logsigma],
+                            scale=model_params[Param.scale_disp_param_logsigma]),
                 transforms=dist.transforms.ExpTransform())
         )
 
-        with plate_items:
-            factor_offsets = numpyro.sample(
-                Site.factor_offsets,
-                dist.Normal(loc=model_params[Param.loc_factor_offsets],
-                            scale=model_params[Param.scale_factor_offsets]),
+        with plate_stores:
+            disp_param_offsets = numpyro.sample(
+                Site.disp_param_offsets,
+                dist.Normal(loc=model_params[Param.loc_disp_param_offsets],
+                            scale=model_params[Param.scale_disp_param_offsets]),
             )
-            factors = factor_mu + factor_offsets * factor_sigma
-            factors = numpyro.sample(
-                Site.factors,
-                dist.Delta(factors),
-                obs=factors
+            disp_params = disp_param_mu + disp_param_offsets * disp_param_sigma
+            disp_params = numpyro.sample(
+                Site.disp_params,
+                dist.Delta(disp_params),
+                obs=disp_params
             )
 
         with plate_features:
@@ -201,7 +201,7 @@ def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
                     transforms=dist.transforms.ExpTransform())
             )
 
-            with plate_items:
+            with plate_stores:
                 coef_offsets = numpyro.sample(
                     Site.coef_offsets,
                     dist.Normal(
@@ -216,12 +216,12 @@ def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
                     obs=coefs
                 )
 
-        with plate_obs, plate_items:
+        with plate_days, plate_stores:
             features = jnp.nan_to_num(X[..., :-1])
             means = jnp.exp(jnp.sum(jnp.expand_dims(coefs, axis=1) * features, axis=2))
-            betas = jnp.exp(-factors)
+            betas = jnp.exp(-disp_params)
             alphas = means * betas
-            return numpyro.sample(Site.obs, dist.GammaPoisson(alphas, betas))
+            return numpyro.sample(Site.days, dist.GammaPoisson(alphas, betas))
 
     return model
 
@@ -232,32 +232,32 @@ def guide(X: DeviceArray):
     Args:
         X: input data
     """
-    n_items, n_obs, n_features = X.shape
+    n_stores, n_days, n_features = X.shape
     n_features -= 1  # remove one dim for target
 
     plate_features = numpyro.plate('features', n_features, dim=-1)
-    plate_items = numpyro.plate('items', n_items, dim=-2)
+    plate_stores = numpyro.plate('stores', n_stores, dim=-2)
 
     numpyro.sample(
-        Site.factor_mu,
-        dist.Normal(loc=numpyro.param(Param.loc_factor_mu, 4.*jnp.ones(1)),
-                    scale=numpyro.param(Param.scale_factor_mu, 1.*jnp.ones(1),
+        Site.disp_param_mu,
+        dist.Normal(loc=numpyro.param(Param.loc_disp_param_mu, 4.*jnp.ones(1)),
+                    scale=numpyro.param(Param.scale_disp_param_mu, 1.*jnp.ones(1),
                                         constraint=dist.constraints.positive))
     )
     numpyro.sample(
-        Site.factor_sigma,
+        Site.disp_param_sigma,
         dist.TransformedDistribution(
-            dist.Normal(loc=numpyro.param(Param.loc_factor_logsigma, 1.0*jnp.ones(1)),
-                        scale=numpyro.param(Param.scale_factor_logsigma, 0.1*jnp.ones(1),
+            dist.Normal(loc=numpyro.param(Param.loc_disp_param_logsigma, 1.0*jnp.ones(1)),
+                        scale=numpyro.param(Param.scale_disp_param_logsigma, 0.1*jnp.ones(1),
                                             constraint=dist.constraints.positive)),
             transforms=dist.transforms.ExpTransform())
     )
 
-    with plate_items:
+    with plate_stores:
         numpyro.sample(
-            Site.factor_offsets,
-            dist.Normal(loc=numpyro.param(Param.loc_factor_offsets, jnp.zeros((n_items, 1))),
-                        scale=numpyro.param(Param.scale_factor_offsets, 0.1*jnp.ones((n_items, 1)),
+            Site.disp_param_offsets,
+            dist.Normal(loc=numpyro.param(Param.loc_disp_param_offsets, jnp.zeros((n_stores, 1))),
+                        scale=numpyro.param(Param.scale_disp_param_offsets, 0.1*jnp.ones((n_stores, 1)),
                                             constraint=dist.constraints.positive))
         )
 
@@ -277,12 +277,12 @@ def guide(X: DeviceArray):
                 transforms=dist.transforms.ExpTransform())
         )
 
-        with plate_items:
+        with plate_stores:
             numpyro.sample(
                 Site.coef_offsets,
                 dist.Normal(
-                    loc=numpyro.param(Param.loc_coef_offsets, jnp.zeros((n_items, n_features))),
-                    scale=numpyro.param(Param.scale_coef_offsets, 0.5*jnp.ones((n_items, n_features)),
+                    loc=numpyro.param(Param.loc_coef_offsets, jnp.zeros((n_stores, n_features))),
+                    scale=numpyro.param(Param.scale_coef_offsets, 0.5*jnp.ones((n_stores, n_features)),
                                         constraint=dist.constraints.positive)
                     )
                 )
@@ -300,32 +300,32 @@ def local_guide(model_params: Dict[str, DeviceArray]) -> Guide:
         actual guide function
     """
     def guide(X: DeviceArray):
-        n_items, n_obs, n_features = X.shape
+        n_stores, n_days, n_features = X.shape
         n_features -= 1  # remove one dim for target
 
         plate_features = numpyro.plate('features', n_features, dim=-1)
-        plate_items = numpyro.plate('items', n_items, dim=-2)
+        plate_stores = numpyro.plate('stores', n_stores, dim=-2)
 
         numpyro.sample(
-            Site.factor_mu,
-            dist.Normal(loc=model_params[Param.loc_factor_mu],
-                        scale=model_params[Param.scale_factor_mu])
+            Site.disp_param_mu,
+            dist.Normal(loc=model_params[Param.loc_disp_param_mu],
+                        scale=model_params[Param.scale_disp_param_mu])
         )
 
         numpyro.sample(
-            Site.factor_sigma,
+            Site.disp_param_sigma,
             dist.TransformedDistribution(
-                dist.Normal(loc=model_params[Param.loc_factor_logsigma],
-                            scale=model_params[Param.scale_factor_logsigma]),
+                dist.Normal(loc=model_params[Param.loc_disp_param_logsigma],
+                            scale=model_params[Param.scale_disp_param_logsigma]),
                 transforms=dist.transforms.ExpTransform())
         )
 
-        with plate_items:
+        with plate_stores:
             numpyro.sample(
-                Site.factor_offsets,
+                Site.disp_param_offsets,
                 dist.Normal(
-                    loc=numpyro.param(Param.loc_factor_offsets, jnp.zeros((n_items, 1))),
-                    scale=numpyro.param(Param.scale_factor_offsets, 0.1*jnp.ones((n_items, 1)),
+                    loc=numpyro.param(Param.loc_disp_param_offsets, jnp.zeros((n_stores, 1))),
+                    scale=numpyro.param(Param.scale_disp_param_offsets, 0.1*jnp.ones((n_stores, 1)),
                                         constraint=dist.constraints.positive))
             )
 
@@ -343,11 +343,11 @@ def local_guide(model_params: Dict[str, DeviceArray]) -> Guide:
                     transforms=dist.transforms.ExpTransform())
             )
 
-            with plate_items:
+            with plate_stores:
                 numpyro.sample(
                     Site.coef_offsets, dist.Normal(
-                        loc=numpyro.param(Param.loc_coef_offsets, jnp.zeros((n_items, n_features))),
-                        scale=numpyro.param(Param.scale_coef_offsets, 0.5 * jnp.ones((n_items, n_features)),
+                        loc=numpyro.param(Param.loc_coef_offsets, jnp.zeros((n_stores, n_features))),
+                        scale=numpyro.param(Param.scale_coef_offsets, 0.5 * jnp.ones((n_stores, n_features)),
                                             constraint=dist.constraints.positive)
                     )
                 )
