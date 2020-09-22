@@ -143,7 +143,7 @@ def model(X: DeviceArray) -> DeviceArray:
 
 
 def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
-    """This guide determines the parameter when the global parameters are already determined
+    """This guide determines the parameter when the global and local parameters are already determined
 
     This can be thought as the `predict` in classical ML
 
