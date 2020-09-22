@@ -1,6 +1,6 @@
 # Bayesian Hierarchical Models at Scale
 
-Accompanying source code to the blog post ...
+Accompanying source code to the blog post [Finally! Bayesian Hierarchical Modeling at Scale](https://florianwilhelm.info/2020/10/bayesian_hierarchical_modeling_at_scale/).
 
 
 ## Installation
