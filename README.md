@@ -1,6 +1,6 @@
-# Bayesian Hierarchical Models at Scale
+# Bayesian Hierarchical Modelling at Scale
 
-Accompanying source code to the blog post [Finally! Bayesian Hierarchical Modeling at Scale](https://florianwilhelm.info/2020/10/bayesian_hierarchical_modeling_at_scale/).
+Accompanying source code to the blog post [Finally! Bayesian Hierarchical Modelling at Scale](https://florianwilhelm.info/2020/10/bayesian_hierarchical_modelling_at_scale/).
 
 
 ## Installation
@@ -9,7 +9,7 @@ In order to set up the necessary environment:
 
 1. create an environment `bhm-at-scale` with the help of [conda],
    ```
-   conda env create -f environment.yaml
+   conda env create -f environment.yaml # or `environment.lock.yaml` for exact reproduction
    ```
 2. activate the new environment with
    ```
