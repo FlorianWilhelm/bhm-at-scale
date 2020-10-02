@@ -11,6 +11,12 @@ Model = Callable[[DeviceArray], DeviceArray]
 Guide = Callable[[DeviceArray], None]
 
 
+class Plate:
+    features = "plate_features"
+    stores = "plate_stores"
+    days = "plate_days"
+
+
 class Site:
     disp_param_mu = "disp_param_mu"
     disp_param_sigma = "disp_param_sigma"
@@ -77,9 +83,9 @@ def model(X: DeviceArray) -> DeviceArray:
     n_features -= 1  # remove one dim for target
     eps = 1e-12  # epsilon
 
-    plate_features = numpyro.plate('features', n_features, dim=-1)
-    plate_stores = numpyro.plate('stores', n_stores, dim=-2)
-    plate_days = numpyro.plate('timesteps', n_days, dim=-1)
+    plate_features = numpyro.plate(Plate.features, n_features, dim=-1)
+    plate_stores = numpyro.plate(Plate.stores, n_stores, dim=-2)
+    plate_days = numpyro.plate(Plate.days, n_days, dim=-1)
 
     disp_param_mu = numpyro.sample(
         Site.disp_param_mu,
@@ -157,9 +163,9 @@ def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
         n_stores, n_days, n_features = X.shape
         n_features -= 1  # remove one dim for target
 
-        plate_features = numpyro.plate('features', n_features, dim=-1)
-        plate_stores = numpyro.plate('stores', n_stores, dim=-2)
-        plate_days = numpyro.plate('timesteps', n_days, dim=-1)
+        plate_features = numpyro.plate(Plate.features, n_features, dim=-1)
+        plate_stores = numpyro.plate(Plate.stores, n_stores, dim=-2)
+        plate_days = numpyro.plate(Plate.days, n_days, dim=-1)
 
         disp_param_mu = numpyro.sample(
             Site.disp_param_mu,
@@ -235,8 +241,8 @@ def guide(X: DeviceArray):
     n_stores, n_days, n_features = X.shape
     n_features -= 1  # remove one dim for target
 
-    plate_features = numpyro.plate('features', n_features, dim=-1)
-    plate_stores = numpyro.plate('stores', n_stores, dim=-2)
+    plate_features = numpyro.plate(Plate.features, n_features, dim=-1)
+    plate_stores = numpyro.plate(Plate.stores, n_stores, dim=-2)
 
     numpyro.sample(
         Site.disp_param_mu,
@@ -303,8 +309,8 @@ def local_guide(model_params: Dict[str, DeviceArray]) -> Guide:
         n_stores, n_days, n_features = X.shape
         n_features -= 1  # remove one dim for target
 
-        plate_features = numpyro.plate('features', n_features, dim=-1)
-        plate_stores = numpyro.plate('stores', n_stores, dim=-2)
+        plate_features = numpyro.plate(Plate.features, n_features, dim=-1)
+        plate_stores = numpyro.plate(Plate.stores, n_stores, dim=-2)
 
         numpyro.sample(
             Site.disp_param_mu,
