@@ -21,7 +21,6 @@ class Plate:
 class Site:
     disp_param_mu = "disp_param_mu"
     disp_param_sigma = "disp_param_sigma"
-    disp_param_offsets = "disp_param_offsets"
     disp_params = "disp_params"
     coef_mus = "coef_mus"
     coef_sigmas = "coef_sigmas"
@@ -34,8 +33,8 @@ class Param:
     scale_disp_param_mu = "scale_disp_param_mu"
     loc_disp_param_logsigma = "loc_disp_param_logsigma"
     scale_disp_param_logsigma = "scale_disp_param_logsigma"
-    loc_disp_param_offsets = "loc_disp_param_offsets"
-    scale_disp_param_offsets = "scale_disp_param_offsets"
+    loc_disp_params = "loc_disp_params"
+    scale_disp_params = "scale_disp_params"
     loc_coef_mus = "loc_coef_mus"
     scale_coef_mus = "scale_coef_mus"
     loc_coef_logsigmas = "loc_coef_logsigmas"
@@ -91,14 +90,14 @@ def model(X: DeviceArray) -> DeviceArray:
     disp_param_sigma = numpyro.sample(Site.disp_param_sigma, dist.HalfNormal(scale=1.0))
 
     with plate_stores:
-        disp_param_offsets = numpyro.sample(
-            Site.disp_param_offsets,
-            dist.Normal(loc=jnp.zeros((n_stores, 1)), scale=0.1),
-        )
-        disp_params = disp_param_mu + disp_param_offsets * disp_param_sigma
-        disp_params = numpyro.sample(
-            Site.disp_params, dist.Delta(disp_params), obs=disp_params
-        )
+        with numpyro.handlers.reparam(config={Site.disp_params: TransformReparam()}):
+            disp_params = numpyro.sample(
+                Site.disp_params,
+                dist.TransformedDistribution(
+                    dist.Normal(loc=jnp.zeros((n_stores, 1)), scale=0.1),
+                    dist.transforms.AffineTransform(disp_param_mu, disp_param_sigma),
+                ),
+            )
 
     with plate_features:
         coef_mus = numpyro.sample(
@@ -178,17 +177,21 @@ def predictive_model(model_params: Dict[str, DeviceArray]) -> Model:
         )
 
         with plate_stores:
-            disp_param_offsets = numpyro.sample(
-                Site.disp_param_offsets,
-                dist.Normal(
-                    loc=model_params[Param.loc_disp_param_offsets],
-                    scale=model_params[Param.scale_disp_param_offsets],
-                ),
-            )
-            disp_params = disp_param_mu + disp_param_offsets * disp_param_sigma
-            disp_params = numpyro.sample(
-                Site.disp_params, dist.Delta(disp_params), obs=disp_params
-            )
+            with numpyro.handlers.reparam(
+                config={Site.disp_params: TransformReparam()}
+            ):
+                disp_params = numpyro.sample(
+                    Site.disp_params,
+                    dist.TransformedDistribution(
+                        dist.Normal(
+                            loc=model_params[Param.loc_disp_params],
+                            scale=model_params[Param.scale_disp_params],
+                        ),
+                        dist.transforms.AffineTransform(
+                            disp_param_mu, disp_param_sigma
+                        ),
+                    ),
+                )
 
         with plate_features:
             coef_mus = numpyro.sample(
@@ -244,7 +247,7 @@ def guide(X: DeviceArray):
     plate_features = numpyro.plate(Plate.features, n_features, dim=-1)
     plate_stores = numpyro.plate(Plate.stores, n_stores, dim=-2)
 
-    numpyro.sample(
+    disp_param_mu = numpyro.sample(
         Site.disp_param_mu,
         dist.Normal(
             loc=numpyro.param(Param.loc_disp_param_mu, 4.0 * jnp.ones(1)),
@@ -255,7 +258,7 @@ def guide(X: DeviceArray):
             ),
         ),
     )
-    numpyro.sample(
+    disp_param_sigma = numpyro.sample(
         Site.disp_param_sigma,
         dist.TransformedDistribution(
             dist.Normal(
@@ -271,19 +274,23 @@ def guide(X: DeviceArray):
     )
 
     with plate_stores:
-        numpyro.sample(
-            Site.disp_param_offsets,
-            dist.Normal(
-                loc=numpyro.param(
-                    Param.loc_disp_param_offsets, jnp.zeros((n_stores, 1))
+        with numpyro.handlers.reparam(config={Site.disp_params: TransformReparam()}):
+            numpyro.sample(
+                Site.disp_params,
+                dist.TransformedDistribution(
+                    dist.Normal(
+                        loc=numpyro.param(
+                            Param.loc_disp_params, jnp.zeros((n_stores, 1))
+                        ),
+                        scale=numpyro.param(
+                            Param.scale_disp_params,
+                            0.1 * jnp.ones((n_stores, 1)),
+                            constraint=dist.constraints.positive,
+                        ),
+                    ),
+                    dist.transforms.AffineTransform(disp_param_mu, disp_param_sigma),
                 ),
-                scale=numpyro.param(
-                    Param.scale_disp_param_offsets,
-                    0.1 * jnp.ones((n_stores, 1)),
-                    constraint=dist.constraints.positive,
-                ),
-            ),
-        )
+            )
 
     with plate_features:
         coef_mus = numpyro.sample(
@@ -351,7 +358,7 @@ def local_guide(model_params: Dict[str, DeviceArray]) -> Guide:
         plate_features = numpyro.plate(Plate.features, n_features, dim=-1)
         plate_stores = numpyro.plate(Plate.stores, n_stores, dim=-2)
 
-        numpyro.sample(
+        disp_param_mu = numpyro.sample(
             Site.disp_param_mu,
             dist.Normal(
                 loc=model_params[Param.loc_disp_param_mu],
@@ -359,7 +366,7 @@ def local_guide(model_params: Dict[str, DeviceArray]) -> Guide:
             ),
         )
 
-        numpyro.sample(
+        disp_param_sigma = numpyro.sample(
             Site.disp_param_sigma,
             dist.TransformedDistribution(
                 dist.Normal(
@@ -371,19 +378,27 @@ def local_guide(model_params: Dict[str, DeviceArray]) -> Guide:
         )
 
         with plate_stores:
-            numpyro.sample(
-                Site.disp_param_offsets,
-                dist.Normal(
-                    loc=numpyro.param(
-                        Param.loc_disp_param_offsets, jnp.zeros((n_stores, 1))
+            with numpyro.handlers.reparam(
+                config={Site.disp_params: TransformReparam()}
+            ):
+                numpyro.sample(
+                    Site.disp_params,
+                    dist.TransformedDistribution(
+                        dist.Normal(
+                            loc=numpyro.param(
+                                Param.loc_disp_params, jnp.zeros((n_stores, 1))
+                            ),
+                            scale=numpyro.param(
+                                Param.scale_disp_params,
+                                0.1 * jnp.ones((n_stores, 1)),
+                                constraint=dist.constraints.positive,
+                            ),
+                        ),
+                        dist.transforms.AffineTransform(
+                            disp_param_mu, disp_param_sigma
+                        ),
                     ),
-                    scale=numpyro.param(
-                        Param.scale_disp_param_offsets,
-                        0.1 * jnp.ones((n_stores, 1)),
-                        constraint=dist.constraints.positive,
-                    ),
-                ),
-            )
+                )
 
         with plate_features:
             coef_mus = numpyro.sample(
