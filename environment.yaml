@@ -19,5 +19,6 @@ dependencies:
      - jax  # ==0.1.57  # needed by numpyro
      - numpyro
      - daft  # only for plotting the graphical models
+     - icecream
   # for development only (could also be kept in a separate environment file)
   - jupyterlab
