@@ -2,7 +2,7 @@
 
 Accompanying source code to the blog post [Finally! Bayesian Hierarchical Modelling at Scale](https://florianwilhelm.info/2020/10/bayesian_hierarchical_modelling_at_scale/).
 
-> **_NOTE:_**  The code is GPL-2 licensed. If you require a more pervasive licence, e.g. for
+> **_NOTE:_**  The code is GPL-2 licensed. If you require a more permissive licence, e.g. for
 > commercial reasons, contact me to obtain a licence for your business.
 
 ## Installation
