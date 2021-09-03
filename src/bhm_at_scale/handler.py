@@ -7,7 +7,7 @@ from jax.experimental.optimizers import OptimizerState
 import jax.numpy as jnp
 from jax.numpy import DeviceArray
 from numpyro import optim
-from numpyro.infer import ELBO, SVI, Predictive
+from numpyro.infer import SVI, Predictive, Trace_ELBO
 from numpyro.infer.svi import SVIState
 
 from .model import Model, Guide
@@ -19,7 +19,7 @@ class ModelHandler(object):
                  guide: Guide,
                  rng_key: int = 0,
                  *,
-                 loss: ELBO = ELBO(num_particles=1),
+                 loss: Trace_ELBO = Trace_ELBO(num_particles=1),
                  optim_builder: optim.optimizers.optimizer = optim.Adam):
         """Handling the model and guide for training and prediction
 
@@ -70,7 +70,7 @@ class ModelHandler(object):
     @optim_state.setter
     def optim_state(self, state: OptimizerState):
         """Set current optimizer state"""
-        self.svi_state = SVIState(state, self.rng_key)
+        self.svi_state = SVIState(state, None, self.rng_key)
 
     def dump_optim_state(self, fh: IO):
         """Pickle and dump optimizer state to file handle"""
